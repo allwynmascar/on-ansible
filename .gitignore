@@ -12,4 +12,5 @@ secrets/
 .venv
 inventory.ini
 *.retry
-.envsecrets/
+.env
+secrets/
