@@ -1,0 +1,25 @@
+---
+- name: create ansible user and push ssh key
+  hosts: proxmox_vms
+  become: true
+  tasks:
+    - name: create ansible user
+      ansible.builtin.user:
+       name: ansible
+       shell: /bin/bash
+       create_home: true
+       state: present
+
+    - name: setup auth key
+      ansible.posix.authorized_key:
+       user: ansible
+       state: present
+       key: "{{ lookup('file', '~/.ssh/ansible_ed25519.pub') }}"
+
+    - name: Add ansible user to sudoers
+      ansible.builtin.lineinfile:
+       path: /etc/sudoers.d/ansible
+       line: "ansible ALL=(ALL) NOPASSWD:ALL"
+       create: true
+       mode: '0440'
+

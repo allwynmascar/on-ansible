@@ -1,0 +1,13 @@
+- hosts: localhost
+  connection: local
+  tasks:
+    - name: Pull secret from Key Vault
+      azure.azcollection.azure_rm_keyvaultsecret_info:
+        vault_uri: "https://akmlab-az-kv.vault.azure.net/"
+        name: "test-secret"
+      register: kv_output
+
+    - name: Show secret value
+      debug:
+        msg: "{{ kv_output.secrets[0].secret }}"
+

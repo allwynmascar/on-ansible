@@ -1,0 +1,14 @@
+---
+- name: Gather host info
+  hosts: proxmox_vms
+  tasks: 
+    - name: Ping host
+      ansible.builtin.ping:
+
+    - name: Print OS info
+      ansible.builtin.debug:
+        msg: "{{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_version'] }}"
+
+    - name: Print hostname
+      ansible.builtin.debug:
+        msg: "{{ ansible_facts['hostname'] }}"

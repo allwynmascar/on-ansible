@@ -1,0 +1,10 @@
+---
+- name: Install net tools
+  hosts: proxmox_vms
+  become: true
+  tasks:
+    - name: Install net tools pkg
+      ansible.builtin.apt:
+       name: net-tools
+       state: present
+       update_cache: true

@@ -1,0 +1,16 @@
+---
+- name: install docker
+  hosts: proxmox_vms
+  become: true
+
+  tasks:
+    - name: install docker
+      ansible.builtin.apt:
+        name: docker.io
+        state: present
+
+    - name: add user to docker group
+      ansible.builtin.user:
+        name: ansible
+        groups: docker
+        append: true
