@@ -1,0 +1,52 @@
+---
+- name: deploy roundup
+  hosts: roundup
+  become: true
+
+  vars:
+    app_dir: /opt/roundup-bot
+    repo_url: https://github.com/allwynmascar/Discord-Round-Up-Bot.git
+
+  tasks:
+    - name: Install git
+      ansible.builtin.apt:
+        name: git
+        state: present
+        update_cache: yes
+
+    - name: Clone the repository
+      ansible.builtin.git:
+        repo: "{{ repo_url }}"
+        dest: "{{ app_dir }}"
+        version: dev
+        force: yes
+
+    - name: Install sqlite3
+      ansible.builtin.apt:
+        name: sqlite3
+        state: present
+        update_cache: yes    
+
+    - name: Install docker compose plugin
+      ansible.builtin.apt:
+        name: docker-compose-v2
+        state: present
+        update_cache: yes    
+
+    - name: Copy .env file to server
+      ansible.builtin.copy:
+        src: ~/ansible/secrets/roundup-bot.env
+        dest: "{{ app_dir }}/.env"
+        mode: '0600'
+
+    - name: Build and run docker contrainer
+      community.docker.docker_compose_v2:
+        project_src: "{{ app_dir }}"
+        state: present
+        build: always
+
+    - name: Print container info
+      ansible.builtin.debug:
+        msg: "Roundup bot deployed successfully to {{ app_dir }}"
+      
+      
