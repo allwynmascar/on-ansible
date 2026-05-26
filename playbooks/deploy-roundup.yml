@@ -39,7 +39,7 @@
         dest: "{{ app_dir }}/.env"
         mode: '0600'
 
-    - name: Build and run docker contrainer
+    - name: Build and run docker container
       community.docker.docker_compose_v2:
         project_src: "{{ app_dir }}"
         state: present
@@ -48,5 +48,4 @@
     - name: Print container info
       ansible.builtin.debug:
         msg: "Roundup bot deployed successfully to {{ app_dir }}"
-      
-      
+    
