@@ -1,6 +1,6 @@
 ---
 - name: Test Connectivity
-  hosts: proxmox_vms
+  hosts: all
   tasks:
     - name: Ping host
       ansible.builtin.ping:
