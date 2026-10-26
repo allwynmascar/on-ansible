@@ -1,6 +1,6 @@
 ---
 - name: Gather host info
-  hosts: proxmox_vms
+  hosts: all
   tasks: 
     - name: Ping host
       ansible.builtin.ping:
@@ -12,3 +12,41 @@
     - name: Print hostname
       ansible.builtin.debug:
         msg: "{{ ansible_facts['hostname'] }}"
+
+    - name: Print IP Addresses
+      ansible.builtin.debug:
+        msg: "{{ ansible_facts['default_ipv4']['address'] }}" 
+
+    - name: Print All IPv4 Addresses
+      ansible.builtin.debug:
+        msg: "Found IP address: {{ item }}"
+      loop: "{{ ansible_facts['all_ipv4_addresses'] }}"       
+
+    - name: Gather package info
+      ansible.builtin.package_facts:
+        manager: auto    
+
+    - name: Check if specific package is installed
+      ansible.builtin.debug:
+        msg: "The version of {{item}} installed is {{ ansible_facts['packages'][item][0]['version'] }}"
+      loop: 
+        - tailscale
+        - docker-ce
+        - docker-compose
+        - immich
+      when: item in ansible_facts['packages']  
+
+    - name: Collect docker host info
+      community.general.docker_host_info:
+        containers: yes
+      register: docker_info
+
+    - name: Print docker containers
+      ansible.builtin.debug:
+        msg: "Running contains: {{item.Names[0]}} (Image: {{item.Image}})"
+      loop: "{{ docker_info.containers }}"
+
+
+    - name: 
+      
+
