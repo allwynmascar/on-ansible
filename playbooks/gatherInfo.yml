@@ -85,3 +85,27 @@
         - docker_info is defined 
         - not docker_info.failed 
         - docker_info.containers | length == 0
+
+    - name: Final Executive Infrastructure Summary
+      ansible.builtin.debug:
+        msg: |
+          ==================================================
+          HOST PROVISIONING & STATE REPORT: {{ ansible_facts['hostname'] }}
+          ==================================================
+          [System Identification]
+            - OS Version     : {{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_version'] }}
+            - Kernel         : {{ ansible_facts['kernel'] }}
+            - Architecture   : {{ ansible_facts['architecture'] }}
+          
+          [Hardware Resources]
+            - vCPUs / Cores  : {{ ansible_facts['processor_vcpus'] }} VCPUs ({{ ansible_facts['processor_cores'] }} Cores)
+            - Total RAM      : {{ (ansible_facts['memtotal_mb'] / 1024) | round(2) }} GB
+          
+          [Networking]
+            - Primary IP     : {{ ansible_facts['default_ipv4']['address'] | default('None') }}
+            - MAC Address    : {{ ansible_facts['default_ipv4']['macaddress'] | default('None') }}
+          
+          [Docker / Applications]
+            - Docker Service : {{ docker_service_status.status.ActiveState | default('N/A') }}
+            - Active Apps    : {% if docker_info.containers is defined and docker_info.containers | length > 0 %}{{ docker_info.containers | map(attribute='Names') | flatten | join(', ') }}{% else %}None{% endif %}
+          ==================================================    
