@@ -1,52 +1,87 @@
 ---
-- name: Gather host info
+- name: Gather Production Ubuntu System & Service Info
   hosts: all
-  tasks: 
-    - name: Ping host
-      ansible.builtin.ping:
+  gather_facts: true
+  become: true
 
-    - name: Print OS info
+  vars:
+    required_packages:
+      - curl
+      - git
+      - ufw
+      - docker-ce
+      - docker-compose-plugin
+
+  tasks:
+    - name: 1. Display Basic Host and OS Identification
       ansible.builtin.debug:
-        msg: "{{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_version'] }}"
+        msg: >
+          Host: {{ ansible_facts['hostname'] }} | 
+          OS: {{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_version'] }} | 
+          Kernel: {{ ansible_facts['kernel'] }} |
+          Architecture: {{ ansible_facts['architecture'] }}
 
-    - name: Print hostname
+    - name: 2. Display Hardware Resource Allocation
       ansible.builtin.debug:
-        msg: "{{ ansible_facts['hostname'] }}"
+        msg: >
+          CPU Cores: {{ ansible_facts['processor_cores'] }} (Processors: {{ ansible_facts['processor_vcpus'] }}) | 
+          Total RAM: {{ (ansible_facts['memtotal_mb'] / 1024) | round(2) }} GB |
+          Free RAM: {{ (ansible_facts['memfree_mb'] / 1024) | round(2) }} GB
 
-    - name: Print IP Addresses
+    - name: 3. Display Primary Network and IP Configuration
       ansible.builtin.debug:
-        msg: "{{ ansible_facts['default_ipv4']['address'] }}" 
+        msg: >
+          Primary Interface: {{ ansible_facts['default_ipv4']['interface'] | default('None') }} | 
+          IP Address: {{ ansible_facts['default_ipv4']['address'] | default('None') }} | 
+          MAC Address: {{ ansible_facts['default_ipv4']['macaddress'] | default('None') }}
 
-    - name: Print All IPv4 Addresses
-      ansible.builtin.debug:
-        msg: "Found IP address: {{ item }}"
-      loop: "{{ ansible_facts['all_ipv4_addresses'] }}"       
-
-    - name: Gather package info
+    - name: 4. Gather Installed Package Facts
       ansible.builtin.package_facts:
-        manager: auto    
+        manager: auto
 
-    - name: Check if specific package is installed
+    - name: 5. Verify Status of Production Packages
       ansible.builtin.debug:
-        msg: "The version of {{item}} installed is {{ ansible_facts['packages'][item][0]['version'] }}"
-      loop: 
-        - tailscale
-        - docker-ce
-        - docker-compose
-        - immich
-      when: item in ansible_facts['packages']  
+        msg: >
+          Package '{{ item }}' is 
+          {% if item in ansible_facts['packages'] %}
+          INSTALLED (Version: {{ ansible_facts['packages'][item][0]['version'] }})
+          {% else %}
+          NOT INSTALLED
+          {% endif %}
+      loop: "{{ required_packages }}"
 
-    - name: Collect docker host info
+    - name: 6. Check Docker Daemon Status
+      ansible.builtin.systemd:
+        name: docker
+      register: docker_service_status
+      ignore_errors: true
+
+    - name: 7. Report Docker Service State
+      ansible.builtin.debug:
+        msg: >
+          Docker Service State: {{ docker_service_status.status.ActiveState | default('unknown') }} 
+          (Enabled: {{ docker_service_status.status.UnitFileState | default('unknown') }})
+      when: docker_service_status is defined and not docker_service_status.failed
+
+    - name: 8. Collect Docker Host & Container Information
       community.general.docker_host_info:
-        containers: yes
+        containers: true
       register: docker_info
+      ignore_errors: true
 
-    - name: Print docker containers
+    - name: 9. Display Running Docker Containers
       ansible.builtin.debug:
-        msg: "Running contains: {{item.Names[0]}} (Image: {{item.Image}})"
+        msg: "Container Name: {{ item.Names[0] }} | Image: {{ item.Image }} | Status: {{ item.Status }}"
       loop: "{{ docker_info.containers }}"
+      when: 
+        - docker_info is defined 
+        - not docker_info.failed 
+        - docker_info.containers | length > 0
 
-
-    - name: 
-      
-
+    - name: 10. Fallback Notice if No Docker Containers Running
+      ansible.builtin.debug:
+        msg: "No active Docker containers found on this host."
+      when: 
+        - docker_info is defined 
+        - not docker_info.failed 
+        - docker_info.containers | length == 0
