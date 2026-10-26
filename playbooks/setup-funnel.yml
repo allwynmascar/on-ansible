@@ -1,0 +1,26 @@
+---
+- name: Enable Immich tailscale funnel
+  hosts: ubsrv
+  become: true
+  tasks:
+    - name: Enable funnel  
+      ansible.builtin.command:
+       cmd: tailscale status
+      register: tsstatus 
+
+    - name: Print status
+      ansible.builtin.debug:
+        msg: "{{tsstatus.stdout}}"  
+    
+    - name: Enable Funnel
+      ansible.builtin.command:
+       cmd: tailscale funnel 2283
+
+    - name: Capture Funnel Status
+      ansible.builtin.command:
+       cmd: tailscale funnel status
+      register: fstatus 
+
+    - name: Print funnel status
+      ansible.builtin.debug:
+       msg: "{{fstatus.stdout}}"  

@@ -1,0 +1,37 @@
+---
+- name: Deploy NetBox via Docker
+  hosts: all
+  become: true
+  vars:
+    netbox_dir: /opt/netbox-docker
+  tasks:
+    - name: Clone netbox-docker release repository
+      ansible.builtin.git:
+        repo: 'https://github.com/netbox-community/netbox-docker.git'
+        dest: "{{ netbox_dir }}"
+        version: release
+        update: yes
+
+    - name: Check if docker-compose.override.yml exists
+      ansible.builtin.stat:
+        path: "{{ netbox_dir }}/docker-compose.override.yml"
+      register: override_file
+
+    - name: Copy docker-compose.override.yml from example
+      ansible.builtin.copy:
+        src: "{{ netbox_dir }}/docker-compose.override.yml.example"
+        dest: "{{ netbox_dir }}/docker-compose.override.yml"
+        remote_src: yes
+      when: not override_file.stat.exists
+
+    - name: Pull latest NetBox Docker images
+      ansible.builtin.command:
+        cmd: docker compose pull
+        chdir: "{{ netbox_dir }}"
+      changed_when: true
+
+    - name: Start NetBox containers in detached mode
+      ansible.builtin.command:
+        cmd: docker compose up -d
+        chdir: "{{ netbox_dir }}"
+      changed_when: true

@@ -1,6 +1,6 @@
 ---
 - name: create ansible user and push ssh key
-  hosts: proxmox_vms
+  hosts: sema
   become: true
   tasks:
     - name: create ansible user
