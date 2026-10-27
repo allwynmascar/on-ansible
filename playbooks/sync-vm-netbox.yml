@@ -1,7 +1,9 @@
 ---
-- name: Sync roundupvm Runtime State to NetBox
+- name: Gather System Info and Sync to NetBox
   hosts: roundupvm
   gather_facts: true
+  become: false  # Avoids 'sudo: not found' errors if running as a privileged user
+
   vars:
     netbox_url: "http://10.0.0.59:8000"
     netbox_token: "Bearer nbt_sLDjdgOcwJfB.ZZMj32Hn0wf3NAw25FHkhIrWzch4ycGtU2ramNa6"
@@ -9,7 +11,16 @@
     target_cluster: "Proxmox-Cluster-1"
 
   tasks:
-    - name: 1. Register Virtual Machine using Live Runtime Facts
+    - name: 1. Display Host & Hardware Summary
+      ansible.builtin.debug:
+        msg: >
+          Host: {{ ansible_facts['hostname'] }} | 
+          OS: {{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_version'] }} | 
+          vCPUs: {{ ansible_facts['processor_vcpus'] | default(2) }} | 
+          RAM: {{ ansible_facts['memtotal_mb'] | default(1024) }} MB |
+          IP: {{ ansible_facts['default_ipv4']['address'] | default('None') }}
+
+    - name: 2. Register Virtual Machine in NetBox using Live Facts
       delegate_to: localhost
       netbox.netbox.netbox_virtual_machine:
         netbox_url: "{{ netbox_url }}"
@@ -19,31 +30,31 @@
           status: "active"
           cluster: "{{ target_cluster }}"
           tenant: "{{ tenant_name }}"
-          vcpus: "{{ ansible_processor_vcpus | default(2) }}"
-          memory: "{{ ansible_memtotal_mb | default(1024) }}"
-          comments: "Proxmox VM running custom Discord application (roundupbot)"
+          vcpus: "{{ ansible_facts['processor_vcpus'] | default(2) }}"
+          memory: "{{ ansible_facts['memtotal_mb'] | default(1024) }}"
+          comments: "Dynamically synced via Ansible from Proxmox VM runtime facts"
         state: present
 
-    - name: 2. Sync Network Interface and Live MAC Address
+    - name: 3. Sync Network Interface and MAC Address to NetBox
       delegate_to: localhost
       netbox.netbox.netbox_vm_interface:
         netbox_url: "{{ netbox_url }}"
         token: "{{ netbox_token }}"
         data:
           virtual_machine: "{{ inventory_hostname }}"
-          name: "eth0"
+          name: "{{ ansible_facts['default_ipv4']['interface'] | default('eth0') }}"
           mac_address: "{{ ansible_eth0.macaddress | default(omit) }}"
         state: present
 
-    - name: 3. Sync Live IP Address into NetBox IPAM
+    - name: 4. Sync IP Address into NetBox IPAM
       delegate_to: localhost
       netbox.netbox.netbox_ip_address:
         netbox_url: "{{ netbox_url }}"
         token: "{{ netbox_token }}"
         data:
-          address: "{{ ansible_default_ipv4.address }}/24"
+          address: "{{ ansible_facts['default_ipv4']['address'] }}/24"
           assigned_object:
             virtual_machine: "{{ inventory_hostname }}"
-            name: "eth0"
+            name: "{{ ansible_facts['default_ipv4']['interface'] | default('eth0') }}"
           role: "primary"
         state: present
