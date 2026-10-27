@@ -1,0 +1,49 @@
+---
+- name: Sync roundupvm Runtime State to NetBox
+  hosts: roundupvm
+  gather_facts: true
+  vars:
+    netbox_url: "http://10.0.0.59:8000"
+    netbox_token: "Bearer nbt_sLDjdgOcwJfB.ZZMj32Hn0wf3NAw25FHkhIrWzch4ycGtU2ramNa6"
+    tenant_name: "akmlabs"
+    target_cluster: "Proxmox-Cluster-1"
+
+  tasks:
+    - name: 1. Register Virtual Machine using Live Runtime Facts
+      delegate_to: localhost
+      netbox.netbox.netbox_virtual_machine:
+        netbox_url: "{{ netbox_url }}"
+        token: "{{ netbox_token }}"
+        data:
+          name: "{{ inventory_hostname }}"
+          status: "active"
+          cluster: "{{ target_cluster }}"
+          tenant: "{{ tenant_name }}"
+          vcpus: "{{ ansible_processor_vcpus | default(2) }}"
+          memory: "{{ ansible_memtotal_mb | default(1024) }}"
+          comments: "Proxmox VM running custom Discord application (roundupbot)"
+        state: present
+
+    - name: 2. Sync Network Interface and Live MAC Address
+      delegate_to: localhost
+      netbox.netbox.netbox_interface:
+        netbox_url: "{{ netbox_url }}"
+        token: "{{ netbox_token }}"
+        data:
+          virtual_machine: "{{ inventory_hostname }}"
+          name: "eth0"
+          mac_address: "{{ ansible_eth0.macaddress | default(omit) }}"
+        state: present
+
+    - name: 3. Sync Live IP Address into NetBox IPAM
+      delegate_to: localhost
+      netbox.netbox.netbox_ip_address:
+        netbox_url: "{{ netbox_url }}"
+        token: "{{ netbox_token }}"
+        data:
+          address: "{{ ansible_default_ipv4.address }}/24"
+          assigned_object:
+            virtual_machine: "{{ inventory_hostname }}"
+            name: "eth0"
+          role: "primary"
+        state: present
