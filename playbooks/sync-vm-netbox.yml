@@ -26,7 +26,7 @@
 
     - name: 2. Sync Network Interface and Live MAC Address
       delegate_to: localhost
-      netbox.netbox.netbox_interface:
+      netbox.netbox.netbox_vm_interface:
         netbox_url: "{{ netbox_url }}"
         token: "{{ netbox_token }}"
         data:
